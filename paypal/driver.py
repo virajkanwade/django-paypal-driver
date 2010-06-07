@@ -1,28 +1,32 @@
 # -*- coding: utf-8 -*-
 
-# Pluggable PayPal NVP (Name Value Pair) API implementation for Django.
-# This file includes the PayPal driver class that maps NVP API methods to such simple functions.
-
-# Feel free to distribute, modify or use any open or closed project without any permission.
-
-# Author: Ozgur Vatansever
-# Email: ozgurvt@gmail.com
+##################################################################################################
+# Pluggable PayPal NVP (Name Value Pair) API implementation for Django.                          #
+# This file includes the PayPal driver class that maps NVP API methods to such simple functions. #
+#                                                                                                #
+# Feel free to distribute, modify or use any open or closed project without any permission.      #
+#                                                                                                #
+# Author: Ozgur Vatansever                                                                       #
+# Email: ozgurvt@gmail.com                                                                       #
+##################################################################################################
 
 
 import urllib, md5, datetime
 from cgi import parse_qs
-from django.conf import settings
+from decimal import Decimal, ROUND_UP
+try:
+    from django.conf import settings
+except:
+    pass
 
 # Exception messages
-
 TOKEN_NOT_FOUND_ERROR = "PayPal error occured. There is no TOKEN info to finish performing PayPal payment process. We haven't charged your money yet."
 NO_PAYERID_ERROR = "PayPal error occured. There is no PAYERID info to finish performing PayPal payment process. We haven't charged your money yet."
 GENERIC_PAYPAL_ERROR = "There occured an error while performing PayPal checkout process. We apologize for the inconvenience. We haven't charged your money yet."
 GENERIC_PAYMENT_ERROR = "Transaction failed. Check out your order details again."
 GENERIC_REFUND_ERROR = "An error occured, we can not perform your refund request"
 
-class PayPal(object):
-    
+class PayPal(object):    
     """
     Pluggable Python PayPal Driver that implements NVP (Name Value Pair) API methods.
     There are simply 3 main methods to be executed in order to finish the PayPal payment process.
@@ -33,17 +37,14 @@ class PayPal(object):
     2) GetExpressCheckoutDetails (optional)
     3) DoExpressCheckoutPayment
     """
-    
     def __init__(self, debug = False):
         # PayPal Credientials
-        
         # You can use the following api credientials for DEBUGGING. (in shell)
-
         # First step is to get the correct credientials.
-        if debug or getattr(settings, "PAYPAL_DEBUG", False):
-            self.username  = "seller_1261519973_biz_api1.akinon.com"
-            self.password  = "1261519978"
-            self.sign = "A1.OnfcjaBVTgV6Yt.oT2VavxcyOA5FGVe-MrNf.1R1zNVAD6.MDOKZO"
+        if debug or getattr(settings, "PAYPAL_DEBUG", True):
+            self.username  = "replaceyourmerchantusername.paypal.com"
+            self.password  = "replaceyourpassword"
+            self.sign = "replace your api signature"
         else:
             self.username  = getattr(settings, "PAYPAL_USER", None)
             self.password  = getattr(settings, "PAYPAL_PASSWORD", None)
@@ -200,7 +201,6 @@ class PayPal(object):
         @token : token that will come from the result of SetExpressionCheckout process.
         @payerid : payerid that will come from the url when PayPal redirects you after SetExpressionCheckout process.
 
-
         @returns bool
         """
         if token is None:
@@ -229,13 +229,12 @@ class PayPal(object):
                 
         state = self._get_value_from_qs(response_tokens, "ACK")
         self.response = response_tokens
-        self.api_response = response_tokens
+        self.api_response = response
         if not state in ["Success", "SuccessWithWarning"]:
             self.doexpresscheckoutpaymenterror = GENERIC_PAYMENT_ERROR
             self.apierror = self._get_value_from_qs(response_tokens, "L_LONGMESSAGE0")
             return False
         return True
-
 
 
 
@@ -286,18 +285,95 @@ class PayPal(object):
 
         state = self._get_value_from_qs(response_tokens, "ACK")
         self.refund_response = response_tokens
-        self.api_response = response_tokens
+        self.api_response = response
         if not state in ["Success", "SuccessWithWarning"]:
             self.refundtransactionerror = GENERIC_REFUND_ERROR
             return False
         return True
 
 
+
+    def DoDirectPayment(self, acct, expdate, cvv2, cardtype, first_name, last_name, amount, currency = "USD", **kwargs):
+        """
+        Calls the direct payment method of the PayPal API. The detailed explanation for that
+        API call is available on:
+        https://cms.paypal.com/us/cgi-bin/?cmd=_render-content&content_ID=developer/e_howto_api_nvp_r_DoDirectPayment
+
+        @acct: credit card number(string): numeric characters only
+        @expdate: expiry date for the credit card(string): format:MMYYYY
+        @cvv2: card verification value(string): 3 or 4 digit length
+        @cardtype: card type(string): Visa, Mastercard, Discover, Amex, Maestro or Solo.
+        @first_name: First name of the customer
+        @last_name: Surname of the customer
+        @amount: Amount to be charged(decimal) (ex: Decimal('10.00'))
+        @currency: Currency code: Default: USD
+
+        @returns bool
+        
+        Extra parameters (**kwargs) contains several required and optional parameters such as ip_address, shipping
+        address related inputs like street name, country, zipcode.
+        
+        This method sends an HTTP POST request. It contructs the necessary POST request with the given parameters.
+        Then it fetches the result which looks like a raw query string and parses it.
+
+        It returns True if the money can be successfully charged from the credit card by looking at the response code.
+        Otherwise, it returns False and sets the generic error.
+        """
+        #################
+        # BEGIN ROUTINE #
+        #################
+        # Firstly, validate the known actual parameters with the 'assert' keyword.
+        assert len(expdate) == 6
+        assert cardtype in ["Visa", "MasterCard", "Discover", "Amex", "Maestro", "Solo"]
+        assert type(amount) == Decimal
+
+        # Validate kwargs
+        assert kwargs.get("ipaddress") is not None
+        assert kwargs.get("street") is not None
+        assert kwargs.get("city") is not None
+        assert kwargs.get("state") is not None
+        assert kwargs.get("countrycode") is not None
+        assert kwargs.get("zip") is not None
+
+        # We should format the amount before we put it into the POST data..
+        amount = str(amount.quantize(Decimal(".01"), rounding = ROUND_UP))
+        # Build up the query dictionary..
+        query_dict = {
+            "METHOD": "DoDirectPayment",
+            "PAYMENTACTION": "Sale",
+            "RETURNFMFDETAILS": 0,
+            "CREDITCARDTYPE": cardtype.upper(),
+            "ACCT": acct,
+            "EXPDATE": expdate,
+            "CVV2": cvv2,
+            "FIRSTNAME": first_name,
+            "LASTNAME": last_name,
+            "CURRENCYCODE": currency,
+            "AMT": amount,
+            }
+        # Include the kwargs dictionary into the query dictionary..
+        for key, value in kwargs.items():
+            # All names in the query dict must be uppercase..
+            query_dict[key.upper()] = value
+
+        query_string = self.signature + urllib.urlencode(query_dict)
+        response = urllib.urlopen(self.NVP_API_ENDPOINT, query_string).read()
+        response_dict = parse_qs(response)
+        self.api_response = response
+        self.response = response_dict
+        state = self._get_value_from_qs(response_dict, "ACK")
+        if not state in ["Success", "SuccessWithWarning"]:
+            self.apierror = self._get_value_from_qs(response_dict, "L_LONGMESSAGE0")
+            return False
+        return True
+        ###############
+        # END ROUTINE #
+        ###############
+
+
     def GetPaymentResponse(self):
         return self.response
 
 
-
     def GetRefundResponse(self):
         return self.refund_response
-
