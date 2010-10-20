@@ -11,7 +11,7 @@
 ##################################################################################################
 
 
-import urllib, md5, datetime
+import urllib, urllib2, md5, datetime
 from cgi import parse_qs
 from decimal import Decimal, ROUND_UP
 try:
@@ -131,7 +131,7 @@ class PayPal(object):
         
         parameters.update(kwargs)
         query_string = self.signature + urllib.urlencode(parameters)
-        response = urllib.urlopen(self.NVP_API_ENDPOINT, query_string).read()
+        response = urllib2.urlopen(self.NVP_API_ENDPOINT, query_string).read()
         response_dict = parse_qs(response)
         self.api_response = response_dict
         state = self._get_value_from_qs(response_dict, "ACK")
@@ -178,7 +178,7 @@ class PayPal(object):
             'TOKEN' : token,
         }
         query_string = self.signature + urllib.urlencode(parameters)
-        response = urllib.urlopen(self.NVP_API_ENDPOINT, query_string).read()
+        response = urllib2.urlopen(self.NVP_API_ENDPOINT, query_string).read()
         response_dict = parse_qs(response)
         self.api_response = response_dict
         state = self._get_value_from_qs(response_dict, "ACK")
@@ -220,12 +220,12 @@ class PayPal(object):
             'PAYERID' : payerid,
         }
         query_string = self.signature + urllib.urlencode(parameters)
-        response = urllib.urlopen(self.NVP_API_ENDPOINT, query_string).read()
+        response = urllib2.urlopen(self.NVP_API_ENDPOINT, query_string).read()
         response_tokens = {}
         for token in response.split('&'):
             response_tokens[token.split("=")[0]] = token.split("=")[1]
         for key in response_tokens.keys():
-            response_tokens[key] = urllib.unquote(response_tokens[key])
+            response_tokens[key] = urllib2.unquote(response_tokens[key])
                 
         state = self._get_value_from_qs(response_tokens, "ACK")
         self.response = response_tokens
@@ -275,13 +275,13 @@ class PayPal(object):
             parameters.update(extra_values)
 
         query_string = self.signature + urllib.urlencode(parameters)
-        response = urllib.urlopen(self.NVP_API_ENDPOINT, query_string).read()
+        response = urllib2.urlopen(self.NVP_API_ENDPOINT, query_string).read()
         response_tokens = {}
         for token in response.split('&'):
             response_tokens[token.split("=")[0]] = token.split("=")[1]
             
         for key in response_tokens.keys():
-            response_tokens[key] = urllib.unquote(response_tokens[key])
+            response_tokens[key] = urllib2.unquote(response_tokens[key])
 
         state = self._get_value_from_qs(response_tokens, "ACK")
         self.refund_response = response_tokens
