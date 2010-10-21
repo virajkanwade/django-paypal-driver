@@ -39,6 +39,7 @@ class PayPal(object):
     """
     def __init__(self, debug = False):
         # PayPal Credientials
+        '''
         # You can use the following api credientials for DEBUGGING. (in shell)
         # First step is to get the correct credientials.
         if debug or getattr(settings, "PAYPAL_DEBUG", True):
@@ -49,6 +50,11 @@ class PayPal(object):
             self.username  = getattr(settings, "PAYPAL_USER", None)
             self.password  = getattr(settings, "PAYPAL_PASSWORD", None)
             self.sign      = getattr(settings, "PAYPAL_SIGNATURE", None)
+        '''
+        self.username  = getattr(settings, "PAYPAL_USER", None)
+        self.password  = getattr(settings, "PAYPAL_PASSWORD", None)
+        self.sign      = getattr(settings, "PAYPAL_SIGNATURE", None)
+
 
         self.credientials = {
             "USER" : self.username,
@@ -103,7 +109,7 @@ class PayPal(object):
 
 
 
-    def SetExpressCheckout(self, amount, currency, return_url, cancel_url, **kwargs):
+    def SetExpressCheckout(self, amount, currency, return_url, cancel_url, cart_items=None, **kwargs):
         """
         To set up an Express Checkout transaction, you must invoke the SetExpressCheckout API
         to provide sufficient information to initiate the payment flow and redirect to PayPal if the
@@ -118,6 +124,8 @@ class PayPal(object):
 
         If you want to add extra parameters, you can define them in **kwargs dict. For instance:
          - SetExpressCheckout(10.00, US, http://www.test.com/cancel/, http://www.test.com/return/, **{'SHIPTOSTREET': 'T Street', 'SHIPTOSTATE': 'T State'})
+
+        More information can be found at https://cms.paypal.com/us/cgi-bin/?cmd=_render-content&content_ID=developer/e_howto_api_ECCustomizing
         """
         parameters = {
             'METHOD' : 'SetExpressCheckout',
@@ -130,6 +138,19 @@ class PayPal(object):
         }
         
         parameters.update(kwargs)
+        
+        if cart_items:
+            ci_params = {}
+            for i in range(0, len(cart_items)):
+                item = cart_items[i]
+                ci_params['L_NAME%s' % i] = item['NAME']
+                ci_params['L_NUMBER%s' % i] = item['NUMBER']
+                ci_params['L_DESC%s' % i] = item['DESC']
+                ci_params['L_AMT%s' % i] = item['AMT']
+                ci_params['L_QTY%s' % i] = item['QTY']
+
+            parameters.update(ci_params)
+
         query_string = self.signature + urllib.urlencode(parameters)
         response = urllib2.urlopen(self.NVP_API_ENDPOINT, query_string).read()
         response_dict = parse_qs(response)
