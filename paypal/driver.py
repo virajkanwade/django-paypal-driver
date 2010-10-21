@@ -11,7 +11,7 @@
 ##################################################################################################
 
 
-import urllib, urllib2, md5, datetime
+import urllib, urllib2, datetime
 from cgi import parse_qs
 from decimal import Decimal, ROUND_UP
 try:
