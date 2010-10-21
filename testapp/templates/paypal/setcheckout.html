@@ -12,9 +12,43 @@
       <tr><th>Cancel URL</th><td>{% url base-cancel %}</td></tr>
       <tr><th>Error URL</th><td>{% url base-error %}</td></tr>
     </table>
-    <p>Please the button below to start <i>PayPal Checkout Process</i></p>
+    <table border="1" cellpadding="5px">
+      <tr>
+        <th>NAME</th>
+        <th>NUMBER</th>
+        <th>DESC</th>
+        <th>AMT</th>
+        <th>QTY</th>
+      </tr>
+      <tr>
+        <td>10% Decaf Kona Blend Coffee</td>
+        <td>623083</td>
+        <td>Size: 8.8-oz</td>
+        <td>4</td>
+        <td>2</td>
+      </tr>
+      <tr>
+        <td>Latte</td>
+        <td>623084</td>
+        <td>Size: 8.8-oz</td>
+        <td>2</td>
+        <td>1</td>
+      </tr>
+    </table>
+    <p>Please click the button below to start <i>PayPal Checkout Process</i></p>
     <form action="{% url paypal-setcheckout %}" method="POST">
       <input type="hidden" name="amount" value="10.00" />
+      <input type="hidden" name="num_cart_items" value="2" />
+      <input type="hidden" name="cart_items[0][NAME]" value="10% Decaf Kona Blend Coffee">
+      <input type="hidden" name="cart_items[0][NUMBER]" value="623083">
+      <input type="hidden" name="cart_items[0][DESC]" value="Size: 8.8-oz">
+      <input type="hidden" name="cart_items[0][AMT]" value="4">
+      <input type="hidden" name="cart_items[0][QTY]" value="2">
+      <input type="hidden" name="cart_items[1][NAME]" value="Latte">
+      <input type="hidden" name="cart_items[1][NUMBER]" value="623084">
+      <input type="hidden" name="cart_items[1][DESC]" value="Size: 8.8-oz">
+      <input type="hidden" name="cart_items[1][AMT]" value="2">
+      <input type="hidden" name="cart_items[1][QTY]" value="1">
       <input type="image" src="http://www.paypal.com/en_US/i/btn/x-click-but5.gif" />
     </form>
   </body>
